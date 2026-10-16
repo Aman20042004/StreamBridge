@@ -3,7 +3,18 @@ package com.example.streambridge.navigation
 
 
 
+
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import com.example.streambridge.viewmodel.SessionViewModel
 
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -26,9 +37,22 @@ import com.example.streambridge.ui.screens.sessions.SessionDetailsScreen
 import com.example.streambridge.ui.screens.settings.SettingsScreen
 import com.example.streambridge.ui.screens.splash.SplashScreen
 import com.example.streambridge.ui.screens.summary.SessionSummaryScreen
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import com.example.streambridge.data.local.SessionManager
+import com.example.streambridge.viewmodel.ParticipantViewModel
+import kotlinx.coroutines.flow.first
 
+
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavGraph() {
+
+    val context = LocalContext.current
+    val sessionManager = remember {
+        SessionManager(context)
+    }
 
     val backStack = rememberNavBackStack(Splash)
 
@@ -45,11 +69,26 @@ fun AppNavGraph() {
 
             entry<Splash> {
 
+                LaunchedEffect(Unit) {
+
+                    val savedSession = sessionManager.session.first()
+
+                    backStack.clear()
+
+                    if (savedSession != null) {
+                        backStack.add(Home)
+                    } else {
+                        backStack.add(Login)
+                    }
+                }
+
                 SplashScreen(
                     onGetStarted = {
+                        backStack.clear()
                         backStack.add(Login)
                     },
                     onLogin = {
+                        backStack.clear()
                         backStack.add(Login)
                     }
                 )
@@ -59,10 +98,12 @@ fun AppNavGraph() {
 
                 LoginScreen(
                     onLogin = {
+                        backStack.clear()
                         backStack.add(Home)
                     },
                     onSignUp = {
-                        backStack.add(SignUp)
+                        backStack.clear()
+                        backStack.add(Home)
                     }
                 )
             }
@@ -82,100 +123,187 @@ fun AppNavGraph() {
             entry<Home> {
 
                 HomeScreen(
+                    sessionManager = sessionManager,
+
                     onCreateSession = {
                         backStack.add(CreateSession)
                     },
+
                     onJoinSession = {
-                      backStack.add(JoinSession)
+                        backStack.add(JoinSession)
                     },
-                    onSessionClick = {
-                        session -> backStack.add(
+
+                    onSessionClick = { session ->
+                        backStack.add(
                             SessionDetails(
-                                sessionId = session.title
+                                sessionId = session.id ?: return@HomeScreen
                             )
                         )
                     },
+
                     onProfileClick = {
                         backStack.add(Profile)
                     }
-
                 )
             }
 
             entry<CreateSession> {
 
                 CreateSessionScreen(
+                    sessionManager = sessionManager,
                     onBack = {
                         backStack.removeLastOrNull()
                     },
-                    onCreate = {
-                      backStack.add(SessionLobby)
+                    onCreate = { session ->
+                        session.id?.let { sessionId ->
+                            backStack.add(
+                                SessionLobby(sessionId)
+                            )
+                        }
                     }
                 )
             }
 
-            entry<SessionLobby> {
+            entry<SessionLobby> { lobby ->
 
-                SessionLobbyScreen(
-                    onBack = {
-                        backStack.removeLastOrNull()
-                    },
-                    onStartSession = {
-                        backStack.add(ParticipantLive)
-                    },
-                    onShare = {
-                        // Share later
-                    },
-                    onCopyCode = {
-                        // Copy later
+                val sessionViewModel: SessionViewModel = viewModel()
+                val session by sessionViewModel.session.collectAsState()
+                val userSession by sessionManager.session.collectAsState(initial = null)
+
+                LaunchedEffect(lobby.sessionId) {
+                    sessionViewModel.getSession(lobby.sessionId)
+                }
+
+                session?.let { currentSession ->
+                    LaunchedEffect(currentSession.status) {
+                        if (currentSession.status == "LIVE") {
+                            backStack.add(
+                                HostLive(lobby.sessionId)
+                            )
+                        }
                     }
-                )
+                    SessionLobbyScreen(
+                        session = currentSession,
+                        onBack = {
+                            backStack.removeLastOrNull()
+                        },
+                        onStartSession = {
+                            userSession?.userId?.let { ownerId ->
+                                sessionViewModel.startSession(
+                                    sessionId = lobby.sessionId,
+                                    ownerId = ownerId
+                                )
+                            }
+                        },
+                        onShare = {
+                            // Later
+                        },
+                        onCopyCode = {
+                            // Later
+                        }
+                    )
+                }
             }
 
             entry<HostLive> {
 
-                HostLiveScreen(
-                    onEndSession = {
-                        backStack.add(SessionSummary)
-                    },
-                    onChat = {
-                        // Chat screen later
-                    },
-                    onAskRequests = {
-                        backStack.add(AskRequests)
-                    },
-                    onParticipants = {
-                        // Participants panel later
+                hostLive ->val sessionViewModel: SessionViewModel = viewModel()
+
+                val session by sessionViewModel.session.collectAsState()
+                val userSession by sessionManager.session.collectAsState(initial = null)
+                LaunchedEffect(hostLive.sessionId) {
+                    sessionViewModel.getSession(hostLive.sessionId)
+                }
+
+                session?.let { currentSession ->
+                    LaunchedEffect(currentSession.status) {
+                        if (currentSession.status == "ENDED") {
+                            backStack.add(
+                                SessionSummary(hostLive.sessionId)
+                            )
+                        }
                     }
-                )
+                    HostLiveScreen(
+                        sessionName = currentSession.title,
+
+                        onEndSession = {
+                            userSession?.userId?.let { ownerId ->
+                                sessionViewModel.endSession(
+                                    sessionId = hostLive.sessionId,
+                                    ownerId = ownerId
+                                )
+                            }
+                        },
+
+                        onChat = {
+                            backStack.add(Chat)
+                        },
+
+                        onAskRequests = {
+                            backStack.add(AskRequests)
+                        },
+
+                        onParticipants = {
+                            backStack.add(
+                                Participants(hostLive.sessionId)
+                            )
+                        }
+                    )
+                }
             }
 
-            entry<ParticipantLive> {
+            entry<ParticipantLive> { participantLive ->
+
+                val participantViewModel: ParticipantViewModel = viewModel()
+                val isLoading by participantViewModel.isLoading.collectAsState()
+                val error by participantViewModel.error.collectAsState()
 
                 ParticipantLiveScreen(
                     onLeaveSession = {
-                        backStack.add(SessionSummary)
+                        if (!isLoading) {
+                            participantViewModel.leaveSession(
+                                participantId = participantLive.participantId,
+                                onSuccess = {
+                                    backStack.add(
+                                        SessionSummary(participantLive.sessionId)
+                                    )
+                                }
+                            )
+                        }
                     },
                     onChat = {
-                       backStack.add(Chat)
+                        backStack.add(Chat)
                     },
                     onAsk = {
                         backStack.add(AskRequest)
                     },
                     onParticipants = {
-                        backStack.add(Participants)
+                        backStack.add(
+                            Participants(participantLive.sessionId)
+                        )
                     }
                 )
+
+                if (isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                }
+
+                error?.let { message ->
+                    androidx.compose.material3.Text(
+                        text = message,
+                        color = Color.Red
+                    )
+                }
             }
 
-            entry<Participants> {
+            entry<Participants> { participantsEntry ->
                 ParticipantsScreen(
+                    sessionId = participantsEntry.sessionId,
                     onBack = {
                         backStack.removeLastOrNull()
                     }
                 )
             }
-
             entry<Chat> {
                 ChatScreen(
                     onBack = {
@@ -200,12 +328,26 @@ fun AppNavGraph() {
                 )
             }
 
-            entry<SessionSummary> {
-                SessionSummaryScreen(
-                    onBackHome = {
-                        backStack.add(Home)
-                    }
-                )
+            entry<SessionSummary> { summary ->
+
+                val sessionViewModel: SessionViewModel = viewModel()
+
+                val session by sessionViewModel.session.collectAsState()
+
+                LaunchedEffect(summary.sessionId) {
+                    sessionViewModel.getSession(summary.sessionId)
+                }
+
+                session?.let { currentSession ->
+
+                    SessionSummaryScreen(
+                        session = currentSession,
+                        onBackHome = {
+                            backStack.clear()
+                            backStack.add(Home)
+                        }
+                    )
+                }
             }
 
             entry<JoinSession> {
@@ -214,19 +356,23 @@ fun AppNavGraph() {
                         backStack.removeLastOrNull()
                     },
                     onJoin = {
-                        backStack.add(ParticipantLive)
+                       // backStack.add(ParticipantLive)
                     }
                 )
             }
 
             entry<Profile> {
                 ProfileScreen(
+                    sessionManager = sessionManager,
+
                     onBack = {
                         backStack.removeLastOrNull()
                     },
+
                     onSettings = {
-                      backStack.add(Settings)
+                        backStack.add(Settings)
                     },
+
                     onLogout = {
                         backStack.clear()
                         backStack.add(Login)
@@ -242,11 +388,36 @@ fun AppNavGraph() {
                 )
             }
 
-            entry<SessionDetails> {
+            entry<SessionDetails>   { details ->
+
+                val participantViewModel: ParticipantViewModel = viewModel()
+                val userSession by sessionManager.session.collectAsState(initial = null)
+                val myParticipant by participantViewModel.myParticipant.collectAsState()
+                val isLoading by participantViewModel.isLoading.collectAsState()
+                val error by participantViewModel.error.collectAsState()
+
+                LaunchedEffect(myParticipant?.id) {
+                    val participant = myParticipant
+                    if (
+                        participant != null &&
+                        participant.sessionId == details.sessionId &&
+                        participant.status == "JOINED"
+                    ) {
+                        participant.id?.let { participantId ->
+                            backStack.add(
+                                ParticipantLive(
+                                    sessionId = details.sessionId,
+                                    participantId = participantId
+                                )
+                            )
+                        }
+                    }
+                }
+
                 SessionDetailsScreen(
                     sessionName = "Kotlin Study Group",
                     description = "Learn Kotlin and modern Android development together.",
-                    participants = 12,
+                    participants = 0,
                     isPrivate = false,
 
                     onBack = {
@@ -254,9 +425,30 @@ fun AppNavGraph() {
                     },
 
                     onJoin = {
-                        backStack.add(ParticipantLive)
+                        val userId = userSession?.userId
+
+                        if (userId.isNullOrBlank()) {
+                            // User session missing; don't send an invalid request.
+                            participantViewModel.clearError()
+                        } else if (!isLoading) {
+                            participantViewModel.joinSession(
+                                sessionId = details.sessionId,
+                                userId = userId
+                            )
+                        }
                     }
                 )
+
+                if (isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                }
+
+                error?.let { message ->
+                    androidx.compose.material3.Text(
+                        text = message,
+                        color = androidx.compose.ui.graphics.Color.Red
+                    )
+                }
             }
 
             entry<SessionHistory> {

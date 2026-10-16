@@ -2,6 +2,7 @@ package com.example.streambridge.ui.screens.auth
 
 
 
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,11 +30,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.streambridge.viewmodel.AuthViewModel
 
 @Composable
 fun SignUpScreen(
     onSignUp: () -> Unit = {},
-    onLogin: () -> Unit = {}
+    onLogin: () -> Unit = {},
+    authViewModel: AuthViewModel = viewModel()
 ) {
 
     var name by remember {
@@ -50,6 +55,9 @@ fun SignUpScreen(
     var confirmPassword by remember {
         mutableStateOf("")
     }
+
+    val registerState by
+    authViewModel.registerState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -154,7 +162,18 @@ fun SignUpScreen(
         )
 
         Button(
-            onClick = onSignUp,
+            onClick = {
+
+                if (password == confirmPassword) {
+
+                    authViewModel.register(
+                        email = email,
+                        password = password,
+                        onSuccess = onSignUp
+                    )
+                }
+
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -172,7 +191,20 @@ fun SignUpScreen(
         }
 
         Spacer(
-            modifier = Modifier.height(16.dp)
+            modifier = Modifier.height(12.dp)
+        )
+
+        registerState?.let { state ->
+
+            Text(
+                text = state,
+                color = Color(0xFF94A3B8),
+                fontSize = 13.sp
+            )
+        }
+
+        Spacer(
+            modifier = Modifier.height(8.dp)
         )
 
         TextButton(

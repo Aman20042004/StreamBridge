@@ -2,6 +2,9 @@ package com.example.streambridge.ui.screens.profile
 
 
 
+
+
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +28,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +39,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.streambridge.data.local.SessionManager
+import com.example.streambridge.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 private val Background = Color(0xFF080B18)
 private val CardColor = Color(0xFF11162A)
@@ -41,10 +52,43 @@ private val TextSecondary = Color(0xFF9CA3B5)
 
 @Composable
 fun ProfileScreen(
+    sessionManager: SessionManager,
     onBack: () -> Unit,
     onSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
+
+    val profileViewModel: ProfileViewModel = viewModel()
+
+    val session by sessionManager.session.collectAsState(initial = null)
+    val profile by profileViewModel.profile.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    /*LaunchedEffect(session?.userId) {
+        session?.userId?.let { userId ->
+            profileViewModel.loadProfile(userId)
+        }
+    */
+
+    LaunchedEffect(session?.userId) {
+
+        Log.d(
+            "ProfileDebug",
+            "Session userId = ${session?.userId}"
+        )
+
+        session?.userId?.let { userId ->
+            profileViewModel.loadProfile(userId)
+        }
+    }
+
+    val name = profile?.name ?: "User"
+    val email = session?.email ?: ""
+    val initial = name
+        .trim()
+        .firstOrNull()
+        ?.uppercase() ?: "U"
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -78,6 +122,7 @@ fun ProfileScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             Surface(
                 modifier = Modifier
                     .size(90.dp)
@@ -90,7 +135,7 @@ fun ProfileScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "A",
+                        text = initial,
                         color = Color.White,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold
@@ -101,14 +146,14 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.size(14.dp))
 
             Text(
-                text = "Aman",
+                text = name,
                 color = TextPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = "aman@example.com",
+                text = email,
                 color = TextSecondary,
                 fontSize = 13.sp
             )
@@ -127,7 +172,7 @@ fun ProfileScreen(
         ProfileItem(
             icon = Icons.Default.Email,
             title = "Email",
-            subtitle = "aman@example.com"
+            subtitle = email
         )
 
         Spacer(modifier = Modifier.size(10.dp))
@@ -142,7 +187,12 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = onLogout,
+            onClick = {
+                scope.launch {
+                    sessionManager.clearSession()
+                    onLogout()
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp)
         ) {

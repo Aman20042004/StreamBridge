@@ -20,16 +20,19 @@ data object Home: NavKey
 data object CreateSession : NavKey
 
 @Serializable
-data object SessionLobby : NavKey
+data class SessionLobby(
+    val sessionId: String
+) : NavKey
 
 @Serializable
-data object HostLive : NavKey
+data class HostLive(
+    val sessionId: String
+) : NavKey
 
 @Serializable
-data object ParticipantLive : NavKey
-
-@Serializable
-data object Participants : NavKey
+data class Participants(
+    val sessionId: String
+) : NavKey
 
 @Serializable
 data object Chat : NavKey
@@ -41,7 +44,9 @@ data object AskRequest : NavKey
 data object AskRequests : NavKey
 
 @Serializable
-data object SessionSummary : NavKey
+data class SessionSummary(
+    val sessionId: String
+) : NavKey
 
 @Serializable
 data object JoinSession : NavKey
@@ -59,3 +64,9 @@ data class SessionDetails(
 
 @Serializable
 data object SessionHistory : NavKey
+
+@Serializable
+data class ParticipantLive(
+    val sessionId: String,
+    val participantId: String
+) : NavKey

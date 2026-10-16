@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun HostLiveScreen(
-    sessionName: String = "Kotlin Study Group",
+    sessionName: String,
     onEndSession: () -> Unit = {},
     onChat: () -> Unit = {},
     onAskRequests: () -> Unit = {},

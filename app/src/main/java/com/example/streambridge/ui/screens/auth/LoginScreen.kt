@@ -2,6 +2,8 @@ package com.example.streambridge.ui.screens.auth
 
 
 
+
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,20 +19,27 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.streambridge.viewmodel.AuthViewModel
 
 @Composable
 fun LoginScreen(
     onLogin: () -> Unit = {},
-    onSignUp: () -> Unit = {}
+    onSignUp: () -> Unit = {},
+    authViewModel: AuthViewModel = viewModel()
 ) {
 
     var email by remember {
@@ -40,6 +49,8 @@ fun LoginScreen(
     var password by remember {
         mutableStateOf("")
     }
+
+    val loginState by authViewModel.loginState.collectAsState()
 
     Box(
         modifier = Modifier
@@ -115,7 +126,15 @@ fun LoginScreen(
             )
 
             Button(
-                onClick = onLogin,
+                onClick = {
+
+                    authViewModel.login(
+                        email = email,
+                        password = password,
+                        onSuccess = onLogin
+                    )
+
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -133,7 +152,20 @@ fun LoginScreen(
             }
 
             Spacer(
-                modifier = Modifier.height(20.dp)
+                modifier = Modifier.height(12.dp)
+            )
+
+            loginState?.let { state ->
+
+                Text(
+                    text = state,
+                    color = Color(0xFF94A3B8),
+                    fontSize = 13.sp
+                )
+            }
+
+            Spacer(
+                modifier = Modifier.height(8.dp)
             )
 
             TextButton(

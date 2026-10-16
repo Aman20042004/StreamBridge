@@ -34,6 +34,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +48,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.streambridge.data.local.SessionManager
+import com.example.streambridge.data.model.Session
+import com.example.streambridge.viewmodel.SessionViewModel
 
 private val Background = Color(0xFF020817)
 private val CardColor = Color(0xFF0B1224)
@@ -62,37 +68,26 @@ data class DemoSession(
 
 @Composable
 fun HomeScreen(
+    sessionManager: SessionManager,
     onCreateSession: () -> Unit,
     onJoinSession: () -> Unit,
-    onSessionClick: (DemoSession) -> Unit,
+    onSessionClick: (Session) -> Unit,
     onProfileClick: () -> Unit
-){
+)   {
 
     var searchQuery by remember {
         mutableStateOf("")
     }
 
-    val sessions = remember {
-        listOf(
-            DemoSession(
-                title = "AI & Machine Learning",
-                host = "Rahul Sharma",
-                participants = 24,
-                isLive = true
-            ),
-            DemoSession(
-                title = "Kotlin Study Group",
-                host = "Ananya Singh",
-                participants = 12,
-                isLive = true
-            ),
-            DemoSession(
-                title = "Web Development",
-                host = "Arjun Kumar",
-                participants = 18,
-                isLive = false
-            )
-        )
+    val sessionViewModel: SessionViewModel = viewModel()
+
+    val userSession by sessionManager.session.collectAsState(initial = null)
+    val sessions by sessionViewModel.sessions.collectAsState()
+
+    LaunchedEffect(userSession?.userId) {
+        userSession?.userId?.let { userId ->
+            sessionViewModel.getSessionsByOwner(userId)
+        }
     }
 
     Column(
@@ -347,7 +342,7 @@ private fun ActionCard(
 
 @Composable
 private fun SessionCard(
-    session: DemoSession,
+    session: Session,
     onClick: () -> Unit
 ) {
 
@@ -404,7 +399,7 @@ private fun SessionCard(
                         fontWeight = FontWeight.SemiBold
                     )
 
-                    if (session.isLive) {
+                    if (session.status=="LIVE") {
 
                         Spacer(
                             modifier = Modifier.width(7.dp)
@@ -426,7 +421,7 @@ private fun SessionCard(
                 )
 
                 Text(
-                    text = "Hosted by ${session.host}",
+                    text ="Owner: ${session.ownerId}",
                     color = SecondaryText,
                     fontSize = 11.sp
                 )
@@ -451,7 +446,7 @@ private fun SessionCard(
                     )
 
                     Text(
-                        text = "${session.participants} participants",
+                        text = "Session",
                         color = SecondaryText,
                         fontSize = 11.sp
                     )

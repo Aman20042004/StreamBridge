@@ -20,6 +20,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Person
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.streambridge.viewmodel.ParticipantViewModel
 
 private val Background = Color(0xFF080B18)
 private val CardColor = Color(0xFF11162A)
@@ -52,21 +57,28 @@ data class Participant(
 
 @Composable
 fun ParticipantsScreen(
+    sessionId: String,
     onBack: () -> Unit
 ) {
+    val viewModel: ParticipantViewModel = viewModel()
+
+    val participants by viewModel.participantsWithProfiles
+        .collectAsState()
+
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
     val search = remember { mutableStateOf("") }
 
-    val participants = listOf(
-        Participant("Aman", "Host", false),
-        Participant("Rahul Sharma", "Participant", false),
-        Participant("Priya Singh", "Participant", true),
-        Participant("Aditya Kumar", "Participant", false),
-        Participant("Neha Verma", "Participant", true)
-    )
+    LaunchedEffect(sessionId) {
+        viewModel.loadParticipants(sessionId)
+    }
 
     val filteredParticipants = participants.filter {
         it.name.contains(search.value, ignoreCase = true)
     }
+
+
 
     Column(
         modifier = Modifier
@@ -146,7 +158,11 @@ fun ParticipantsScreen(
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            filteredParticipants.forEach { participant ->
+            filteredParticipants.forEach { item ->
+
+                val participant = item.participant
+                val isHost = participant.role == "OWNER"
+                val isMuted = participant.muted
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -159,7 +175,6 @@ fun ParticipantsScreen(
                             .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         // Avatar
                         Box(
                             modifier = Modifier
@@ -169,9 +184,7 @@ fun ParticipantsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = participant.name
-                                    .first()
-                                    .uppercase(),
+                                text = item.name.firstOrNull()?.uppercase() ?: "?",
                                 color = Color.White,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold
@@ -187,13 +200,13 @@ fun ParticipantsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = participant.name,
+                                    text = item.name,
                                     color = TextPrimary,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
 
-                                if (participant.role == "Host") {
+                                if (isHost) {
                                     Spacer(modifier = Modifier.size(8.dp))
 
                                     Surface(
@@ -217,24 +230,20 @@ fun ParticipantsScreen(
                             Spacer(modifier = Modifier.height(3.dp))
 
                             Text(
-                                text = participant.role,
+                                text = if (isHost) "Host" else "Participant",
                                 color = TextSecondary,
                                 fontSize = 12.sp
                             )
                         }
 
                         Icon(
-                            imageVector = if (participant.isMuted) {
+                            imageVector = if (isMuted) {
                                 Icons.Default.MicOff
                             } else {
                                 Icons.Default.Mic
                             },
-                            contentDescription = null,
-                            tint = if (participant.isMuted) {
-                                TextSecondary
-                            } else {
-                                Green
-                            },
+                            contentDescription = if (isMuted) "Muted" else "Microphone on",
+                            tint = if (isMuted) TextSecondary else Green,
                             modifier = Modifier.size(21.dp)
                         )
                     }

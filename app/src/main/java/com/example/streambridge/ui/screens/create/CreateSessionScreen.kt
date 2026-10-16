@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,12 +37,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import com.example.streambridge.data.local.SessionManager
+import com.example.streambridge.data.model.Session
+import com.example.streambridge.viewmodel.SessionViewModel
 
 @Composable
 fun CreateSessionScreen(
+    sessionManager: SessionManager,
     onBack: () -> Unit = {},
-    onCreate: () -> Unit = {}
-) {
+    onCreate: (Session) -> Unit = {}
+)  {
+
+    val sessionViewModel: SessionViewModel = viewModel()
+
+    val userSession by sessionManager.session.collectAsState(initial = null)
+
+    val session by sessionViewModel.session.collectAsState()
+    val isLoading by sessionViewModel.isLoading.collectAsState()
+    val error by sessionViewModel.error.collectAsState()
 
     var title by remember {
         mutableStateOf("")
@@ -54,7 +69,11 @@ fun CreateSessionScreen(
     var isPublic by remember {
         mutableStateOf(true)
     }
-
+    LaunchedEffect(session) {
+        session?.let {
+            onCreate(it)
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -81,7 +100,7 @@ fun CreateSessionScreen(
             }
 
             Text(
-                text = "Create Session",
+                text = if (isLoading) "Creating..." else "Create Session",
                 color = Color.White,
                 fontSize = 21.sp,
                 fontWeight = FontWeight.Bold
@@ -228,7 +247,23 @@ fun CreateSessionScreen(
         )
 
         Button(
-            onClick = onCreate,
+                onClick = {
+                    val ownerId = userSession?.userId
+
+                    if (ownerId != null && title.isNotBlank()) {
+                        sessionViewModel.createSession(
+                            ownerId = ownerId,
+                            title = title.trim(),
+                            description = description.trim().ifBlank { null },
+                            accessMode = if (isPublic) {
+                                "ANYONE_WITH_LINK"
+                            } else {
+                                "SELECTED_USERS_ONLY"
+                            }
+                        )
+                    }
+                },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp),

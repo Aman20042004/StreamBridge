@@ -1,6 +1,8 @@
 package com.example.streambridge.ui.screens.summary
 
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.streambridge.data.model.Session
 
 private val Background = Color(0xFF080B18)
 private val CardColor = Color(0xFF12182A)
@@ -37,10 +40,31 @@ private val Green = Color(0xFF22C55E)
 private val TextPrimary = Color.White
 private val TextSecondary = Color(0xFF9CA3B5)
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SessionSummaryScreen(
+    session: Session,
     onBackHome: () -> Unit
-) {
+)  {
+
+    val durationText = if (
+        session.startedAt != null &&
+        session.endedAt != null
+    ) {
+        try {
+            val started = java.time.Instant.parse(session.startedAt)
+            val ended = java.time.Instant.parse(session.endedAt)
+
+            val totalMinutes =
+                java.time.Duration.between(started, ended).toMinutes()
+
+            "${totalMinutes} min"
+        } catch (e: Exception) {
+            "--"
+        }
+    } else {
+        "--"
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -70,7 +94,7 @@ fun SessionSummaryScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Kotlin Study Group",
+            text = session.title,
             color = TextSecondary,
             fontSize = 14.sp
         )
@@ -93,7 +117,7 @@ fun SessionSummaryScreen(
             SummaryCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Groups,
-                value = "12",
+                value = durationText,
                 label = "Participants"
             )
         }
@@ -118,18 +142,18 @@ fun SessionSummaryScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 DetailRow(
-                    title = "Session Code",
-                    value = "SB-KT82-9X"
+                    title = "Session ID",
+                    value = session.id ?: " "
                 )
 
                 DetailRow(
                     title = "Status",
-                    value = "Completed"
+                    value = session.status
                 )
 
                 DetailRow(
                     title = "Questions",
-                    value = "8"
+                    value = "__"
                 )
             }
         }

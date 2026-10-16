@@ -37,14 +37,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.streambridge.data.model.Session
 
 @Composable
 fun SessionLobbyScreen(
+    session: Session,
     onBack: () -> Unit = {},
     onStartSession: () -> Unit = {},
     onShare: () -> Unit = {},
     onCopyCode: () -> Unit = {}
-) {
+)  {
 
     Column(
         modifier = Modifier
@@ -113,7 +115,7 @@ fun SessionLobbyScreen(
         )
 
         Text(
-            text = "Kotlin Study Group",
+            text = session.title,
             color = Color.White,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
@@ -126,7 +128,12 @@ fun SessionLobbyScreen(
         )
 
         Text(
-            text = "Your session is ready",
+            text = when (session.status) {
+                "CREATED" -> "Your session is ready"
+                "LIVE" -> "Session is live"
+                "ENDED" -> "Session has ended"
+                else -> "Session status unavailable"
+            },
             color = Color(0xFF94A3B8),
             fontSize = 13.sp,
             textAlign = TextAlign.Center,
@@ -161,7 +168,7 @@ fun SessionLobbyScreen(
                 )
 
                 Text(
-                    text = "SB-KT82-9X",
+                    text = session.id ?: "N/A",
                     color = Color.White,
                     fontSize = 25.sp,
                     fontWeight = FontWeight.Bold,
