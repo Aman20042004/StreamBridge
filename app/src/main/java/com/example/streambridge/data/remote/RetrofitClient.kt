@@ -12,16 +12,16 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
 
     private const val AUTH_BASE_URL =
-        "http://10.121.164.197:8081/"
+        "http://10.16.153.197:8081/"
 
     private const val USER_BASE_URL =
-        "http://10.121.164.197:8090/"
+        "http://10.16.153.197:8090/"
 
     private const val SESSION_BASE_URL =
-        "http://10.121.164.197:8086/"
+        "http://10.16.153.197:8086/"
 
     private const val PARTICIPANT_BASE_URL =
-        "http://10.121.164.197:8083/"
+        "http://10.16.153.197:8083/"
 
     val authApi: AuthApi by lazy {
         Retrofit.Builder()

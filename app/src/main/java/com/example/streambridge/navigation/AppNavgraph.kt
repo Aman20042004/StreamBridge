@@ -6,6 +6,7 @@ package com.example.streambridge.navigation
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,7 +16,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import com.example.streambridge.viewmodel.SessionViewModel
-
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -304,6 +308,7 @@ fun AppNavGraph() {
                     }
                 )
             }
+
             entry<Chat> {
                 ChatScreen(
                     onBack = {
@@ -388,16 +393,33 @@ fun AppNavGraph() {
                 )
             }
 
-            entry<SessionDetails>   { details ->
+            entry<SessionDetails> { details ->
 
                 val participantViewModel: ParticipantViewModel = viewModel()
-                val userSession by sessionManager.session.collectAsState(initial = null)
-                val myParticipant by participantViewModel.myParticipant.collectAsState()
-                val isLoading by participantViewModel.isLoading.collectAsState()
-                val error by participantViewModel.error.collectAsState()
+                val sessionViewModel: SessionViewModel = viewModel()
+
+                val userSession by sessionManager.session
+                    .collectAsState(initial = null)
+
+                val myParticipant by participantViewModel.myParticipant
+                    .collectAsState()
+
+                val isLoading by participantViewModel.isLoading
+                    .collectAsState()
+
+                val error by participantViewModel.error
+                    .collectAsState()
+
+                val session by sessionViewModel.session
+                    .collectAsState()
+
+                LaunchedEffect(details.sessionId) {
+                    sessionViewModel.getSession(details.sessionId)
+                }
 
                 LaunchedEffect(myParticipant?.id) {
                     val participant = myParticipant
+
                     if (
                         participant != null &&
                         participant.sessionId == details.sessionId &&
@@ -414,30 +436,38 @@ fun AppNavGraph() {
                     }
                 }
 
-                SessionDetailsScreen(
-                    sessionName = "Kotlin Study Group",
-                    description = "Learn Kotlin and modern Android development together.",
-                    participants = 0,
-                    isPrivate = false,
-
-                    onBack = {
-                        backStack.removeLastOrNull()
-                    },
-
-                    onJoin = {
-                        val userId = userSession?.userId
-
-                        if (userId.isNullOrBlank()) {
-                            // User session missing; don't send an invalid request.
-                            participantViewModel.clearError()
-                        } else if (!isLoading) {
-                            participantViewModel.joinSession(
-                                sessionId = details.sessionId,
-                                userId = userId
-                            )
-                        }
+                if (session == null) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator()
                     }
-                )
+                } else {
+                    SessionDetailsScreen(
+                        sessionName = session!!.title,
+                        description = session!!.description.toString(),
+                        participants = 0,
+                        isPrivate = false,
+
+                        onBack = {
+                            backStack.removeLastOrNull()
+                        },
+
+                        onJoin = {
+                            val userId = userSession?.userId
+
+                            if (userId.isNullOrBlank()) {
+                                participantViewModel.clearError()
+                            } else if (!isLoading) {
+                                participantViewModel.joinSession(
+                                    sessionId = details.sessionId,
+                                    userId = userId
+                                )
+                            }
+                        }
+                    )
+                }
 
                 if (isLoading) {
                     androidx.compose.material3.CircularProgressIndicator()
