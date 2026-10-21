@@ -29,6 +29,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.streambridge.viewmodel.InteractionViewModel
+import androidx.compose.foundation.background
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 
 private val Background = Color(0xFF080B18)
 private val CardColor = Color(0xFF12182A)
@@ -38,10 +48,16 @@ private val TextSecondary = Color(0xFF9CA3B5)
 
 @Composable
 fun AskRequestScreen(
+    sessionId: String,
+    userId: String,
+    interactionViewModel: InteractionViewModel,
     onBack: () -> Unit
 ) {
-    val question = remember { mutableStateOf("") }
-    val sent = remember { mutableStateOf(false) }
+    var question by remember(sessionId) { mutableStateOf("") }
+
+    val isSubmitting by interactionViewModel.isSubmitting.collectAsState()
+    val error by interactionViewModel.error.collectAsState()
+    val successMessage by interactionViewModel.successMessage.collectAsState()
 
     Column(
         modifier = Modifier
@@ -49,8 +65,6 @@ fun AskRequestScreen(
             .background(Background)
             .padding(20.dp)
     ) {
-
-        // Top bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -86,11 +100,9 @@ fun AskRequestScreen(
             shape = RoundedCornerShape(20.dp),
             color = CardColor
         ) {
-            Column(
-                modifier = Modifier.padding(18.dp)
-            ) {
+            Column(modifier = Modifier.padding(18.dp)) {
                 Text(
-                    text = "Your Question",
+                    text = "Your Question (optional)",
                     color = TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
@@ -99,10 +111,10 @@ fun AskRequestScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = question.value,
+                    value = question,
                     onValueChange = {
-                        question.value = it
-                        sent.value = false
+                        question = it
+                        interactionViewModel.clearMessages()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -119,31 +131,51 @@ fun AskRequestScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                androidx.compose.material3.Button(
+                Button(
                     onClick = {
-                        if (question.value.isNotBlank()) {
-                            sent.value = true
-                            question.value = ""
-                        }
+                        interactionViewModel.createAsk(
+                            sessionId = sessionId,
+                            userId = userId,
+                            message = question,
+                            onSuccess = {
+                                question = ""
+                            }
+                        )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
-                    enabled = question.value.isNotBlank()
+                    enabled = !isSubmitting && userId.isNotBlank()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Send,
-                        contentDescription = null
-                    )
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = null
+                        )
 
-                    Spacer(modifier = Modifier.size(8.dp))
+                        Spacer(modifier = Modifier.size(8.dp))
 
-                    Text("Send Request")
+                        Text("Send Request")
+                    }
                 }
             }
         }
 
-        if (sent.value) {
-            Spacer(modifier = Modifier.height(18.dp))
+        error?.let { message ->
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = message,
+                color = Color.Red
+            )
+        }
+
+        successMessage?.let { message ->
+            Spacer(modifier = Modifier.height(16.dp))
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -151,7 +183,7 @@ fun AskRequestScreen(
                 color = Primary.copy(alpha = 0.18f)
             ) {
                 Text(
-                    text = "✓ Request sent to the host",
+                    text = message,
                     modifier = Modifier.padding(16.dp),
                     color = TextPrimary,
                     fontSize = 14.sp

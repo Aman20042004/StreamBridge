@@ -3,6 +3,7 @@ package com.example.streambridge.data.remote
 
 
 
+import com.example.streambridge.data.remote.interaction_api.InteractionApi
 import com.example.streambridge.data.remote.participant_api.ParticipantApi
 import com.example.streambridge.data.remote.session_api.SessionApi
 import com.example.streambridge.data.remote.user_api.UserApi
@@ -12,16 +13,19 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
 
     private const val AUTH_BASE_URL =
-        "http://10.16.153.197:8081/"
+        "http://10.203.97.197:8081/"
 
     private const val USER_BASE_URL =
-        "http://10.16.153.197:8090/"
+        "http://10.203.97.197:8090/"
 
     private const val SESSION_BASE_URL =
-        "http://10.16.153.197:8086/"
+        "http://10.203.97.197:8086/"
 
     private const val PARTICIPANT_BASE_URL =
-        "http://10.16.153.197:8083/"
+        "http://10.203.97.197:8083/"
+
+    private const val INTERACTION_BASE_URL =
+        "http://10.203.97.197:9094/"
 
     val authApi: AuthApi by lazy {
         Retrofit.Builder()
@@ -53,5 +57,13 @@ object RetrofitClient {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ParticipantApi::class.java)
+    }
+
+    val interactionApi: InteractionApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(INTERACTION_BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(InteractionApi::class.java)
     }
 }

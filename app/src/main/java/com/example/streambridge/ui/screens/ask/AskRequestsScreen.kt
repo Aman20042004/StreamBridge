@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -34,6 +32,27 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import com.example.streambridge.viewmodel.InteractionViewModel
+
 
 private val Background = Color(0xFF080B18)
 private val CardColor = Color(0xFF12182A)
@@ -43,29 +62,30 @@ private val Red = Color(0xFFEF4444)
 private val TextPrimary = Color.White
 private val TextSecondary = Color(0xFF9CA3B5)
 
-data class AskItem(
-    val name: String,
-    val question: String
-)
-
 @Composable
 fun AskRequestsScreen(
+    sessionId: String,
+    ownerId: String,
+    isOwner: Boolean,
+    interactionViewModel: InteractionViewModel,
     onBack: () -> Unit
 ) {
-    val requests = listOf(
-        AskItem(
-            name = "Rahul Sharma",
-            question = "Can you explain StateFlow with an example?"
-        ),
-        AskItem(
-            name = "Priya Singh",
-            question = "Could you repeat the last point?"
-        ),
-        AskItem(
-            name = "Aditya Kumar",
-            question = "Can I ask something about Compose?"
+    val requests by interactionViewModel.askRequests.collectAsState()
+    val isLoading by interactionViewModel.isLoading.collectAsState()
+    val isSubmitting by interactionViewModel.isSubmitting.collectAsState()
+    val error by interactionViewModel.error.collectAsState()
+    val successMessage by interactionViewModel.successMessage.collectAsState()
+
+    var selectedStatus by remember(sessionId) {
+        mutableStateOf("ALL")
+    }
+
+    LaunchedEffect(sessionId, selectedStatus) {
+        interactionViewModel.loadAskRequests(
+            sessionId = sessionId,
+            status = selectedStatus.takeUnless { it == "ALL" }
         )
-    )
+    }
 
     Column(
         modifier = Modifier
@@ -73,10 +93,8 @@ fun AskRequestsScreen(
             .background(Background)
             .padding(horizontal = 20.dp)
     ) {
-
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Top bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -89,9 +107,7 @@ fun AskRequestsScreen(
                 )
             }
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Ask Requests",
                     color = TextPrimary,
@@ -100,7 +116,7 @@ fun AskRequestsScreen(
                 )
 
                 Text(
-                    text = "${requests.size} pending requests",
+                    text = if (isOwner) "Manage audience requests" else "View requests",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
@@ -113,134 +129,163 @@ fun AskRequestsScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(requests) { request ->
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    color = CardColor
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                            // Avatar
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape),
-                                    color = Primary
-                                ) {
-                                    BoxContent(
-                                        text = request.name.first().uppercase()
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.size(10.dp))
-
-                                Text(
-                                    text = request.name,
-                                    color = TextPrimary,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-
-                            Text(
-                                text = "PENDING",
-                                color = Primary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
+            listOf("ALL", "PENDING", "ACCEPTED", "REJECTED").forEach { status ->
+                FilterChip(
+                    selected = selectedStatus == status,
+                    onClick = { selectedStatus = status },
+                    label = {
                         Text(
-                            text = request.question,
-                            color = TextPrimary,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp
+                            text = status.replaceFirstChar { it.uppercase() },
+                            fontSize = 11.sp
                         )
+                    }
+                )
+            }
+        }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+        error?.let { message ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = message, color = Color.Red)
+        }
 
-                        Row(
+        successMessage?.let { message ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = message, color = Primary)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        when {
+            isLoading && requests.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Primary)
+                }
+            }
+
+            requests.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No requests found.",
+                        color = TextSecondary
+                    )
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = requests,
+                        key = { it.id }
+                    ) { request ->
+                        Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            shape = RoundedCornerShape(18.dp),
+                            color = CardColor
                         ) {
-
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                color = Green.copy(alpha = 0.15f)
+                            Column(
+                                modifier = Modifier.padding(16.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(11.dp),
-                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = Green,
-                                        modifier = Modifier.size(18.dp)
+                                    Text(
+                                        text = "User: ${request.userId}",
+                                        modifier = Modifier.weight(1f),
+                                        color = TextPrimary,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
                                     )
 
-                                    Spacer(modifier = Modifier.size(6.dp))
-
                                     Text(
-                                        text = "Accept",
-                                        color = Green,
-                                        fontSize = 13.sp,
+                                        text = request.status,
+                                        color = when (request.status) {
+                                            "ACCEPTED" -> Green
+                                            "REJECTED" -> Color.Red
+                                            else -> Primary
+                                        },
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
-                            }
 
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                color = Red.copy(alpha = 0.15f)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(11.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = null,
-                                        tint = Red,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.size(6.dp))
+                                if (!request.message.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(12.dp))
 
                                     Text(
-                                        text = "Dismiss",
-                                        color = Red,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
+                                        text = request.message,
+                                        color = TextPrimary,
+                                        fontSize = 14.sp,
+                                        lineHeight = 20.sp
                                     )
+                                }
+
+                                if (isOwner && ownerId.isNotBlank() &&
+                                    request.status == "PENDING"
+                                ) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                interactionViewModel.acceptAsk(
+                                                    askId = request.id,
+                                                    ownerId = ownerId,
+                                                    sessionId = sessionId
+                                                )
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            enabled = !isSubmitting
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Accept")
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                interactionViewModel.rejectAsk(
+                                                    askId = request.id,
+                                                    ownerId = ownerId,
+                                                    sessionId = sessionId
+                                                )
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            enabled = !isSubmitting
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = null
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Reject")
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -248,21 +293,5 @@ fun AskRequestsScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun BoxContent(
-    text: String
-) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
     }
 }

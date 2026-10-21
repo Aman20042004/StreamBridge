@@ -12,14 +12,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import com.example.streambridge.viewmodel.SessionViewModel
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -40,11 +34,12 @@ import com.example.streambridge.ui.screens.profile.ProfileScreen
 import com.example.streambridge.ui.screens.sessions.SessionDetailsScreen
 import com.example.streambridge.ui.screens.settings.SettingsScreen
 import com.example.streambridge.ui.screens.splash.SplashScreen
-import com.example.streambridge.ui.screens.summary.SessionSummaryScreen
+import com.example.streambridge.ui.screens.sessions.SessionSummaryScreen
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import com.example.streambridge.data.local.SessionManager
+import com.example.streambridge.viewmodel.InteractionViewModel
 import com.example.streambridge.viewmodel.ParticipantViewModel
 import kotlinx.coroutines.flow.first
 
@@ -160,10 +155,12 @@ fun AppNavGraph() {
                     },
                     onCreate = { session ->
                         session.id?.let { sessionId ->
-                            backStack.add(
-                                SessionLobby(sessionId)
-                            )
+                            if (backStack.lastOrNull() is CreateSession) {
+                                backStack.removeLastOrNull()
+                            }
+                            backStack.add(SessionLobby(sessionId))
                         }
+
                     }
                 )
             }
@@ -179,18 +176,25 @@ fun AppNavGraph() {
                 }
 
                 session?.let { currentSession ->
-                    LaunchedEffect(currentSession.status) {
-                        if (currentSession.status == "LIVE") {
-                            backStack.add(
-                                HostLive(lobby.sessionId)
-                            )
+
+                    LaunchedEffect(lobby.sessionId, currentSession.status) {
+                        if (currentSession.status == "LIVE" &&
+                            backStack.lastOrNull() == lobby
+                        ) {
+                            backStack.removeLastOrNull()
+                            backStack.add(HostLive(lobby.sessionId))
                         }
                     }
+
                     SessionLobbyScreen(
                         session = currentSession,
+
                         onBack = {
-                            backStack.removeLastOrNull()
+                            if (backStack.lastOrNull() == lobby) {
+                                backStack.removeLastOrNull()
+                            }
                         },
+
                         onStartSession = {
                             userSession?.userId?.let { ownerId ->
                                 sessionViewModel.startSession(
@@ -199,9 +203,11 @@ fun AppNavGraph() {
                                 )
                             }
                         },
+
                         onShare = {
                             // Later
                         },
+
                         onCopyCode = {
                             // Later
                         }
@@ -209,24 +215,36 @@ fun AppNavGraph() {
                 }
             }
 
-            entry<HostLive> {
+            entry<Participants> { participantsEntry ->
+                ParticipantsScreen(
+                    sessionId = participantsEntry.sessionId,
+                    onBack = {
+                        backStack.removeLastOrNull()
+                    }
+                )
+            }
 
-                hostLive ->val sessionViewModel: SessionViewModel = viewModel()
+            entry<HostLive> { hostLive ->
 
+                val sessionViewModel: SessionViewModel = viewModel()
                 val session by sessionViewModel.session.collectAsState()
                 val userSession by sessionManager.session.collectAsState(initial = null)
+
                 LaunchedEffect(hostLive.sessionId) {
                     sessionViewModel.getSession(hostLive.sessionId)
                 }
 
                 session?.let { currentSession ->
-                    LaunchedEffect(currentSession.status) {
-                        if (currentSession.status == "ENDED") {
-                            backStack.add(
-                                SessionSummary(hostLive.sessionId)
-                            )
+
+                    LaunchedEffect(hostLive.sessionId, currentSession.status) {
+                        if (currentSession.status == "ENDED" &&
+                            backStack.lastOrNull() == hostLive
+                        ) {
+                            backStack.removeLastOrNull()
+                            backStack.add(SessionSummary(hostLive.sessionId))
                         }
                     }
+
                     HostLiveScreen(
                         sessionName = currentSession.title,
 
@@ -240,17 +258,21 @@ fun AppNavGraph() {
                         },
 
                         onChat = {
-                            backStack.add(Chat)
+                            if (backStack.lastOrNull() == hostLive) {
+                                backStack.add(Chat(hostLive.sessionId))
+                            }
                         },
 
                         onAskRequests = {
-                            backStack.add(AskRequests)
+                            if (backStack.lastOrNull() == hostLive) {
+                                backStack.add(AskRequests(hostLive.sessionId))
+                            }
                         },
 
                         onParticipants = {
-                            backStack.add(
-                                Participants(hostLive.sessionId)
-                            )
+                            if (backStack.lastOrNull() == hostLive) {
+                                backStack.add(Participants(hostLive.sessionId))
+                            }
                         }
                     )
                 }
@@ -268,23 +290,19 @@ fun AppNavGraph() {
                             participantViewModel.leaveSession(
                                 participantId = participantLive.participantId,
                                 onSuccess = {
-                                    backStack.add(
-                                        SessionSummary(participantLive.sessionId)
-                                    )
+                                    backStack.add(SessionSummary(participantLive.sessionId))
                                 }
                             )
                         }
                     },
                     onChat = {
-                        backStack.add(Chat)
+                        backStack.add(Chat(participantLive.sessionId))
                     },
                     onAsk = {
-                        backStack.add(AskRequest)
+                        backStack.add(AskRequest(participantLive.sessionId))
                     },
                     onParticipants = {
-                        backStack.add(
-                            Participants(participantLive.sessionId)
-                        )
+                        backStack.add(Participants(participantLive.sessionId))
                     }
                 )
 
@@ -300,37 +318,70 @@ fun AppNavGraph() {
                 }
             }
 
-            entry<Participants> { participantsEntry ->
-                ParticipantsScreen(
-                    sessionId = participantsEntry.sessionId,
-                    onBack = {
-                        backStack.removeLastOrNull()
-                    }
-                )
-            }
+            entry<Chat> { chat ->
 
-            entry<Chat> {
+                val interactionViewModel: InteractionViewModel = viewModel()
+                val userSession by sessionManager.session.collectAsState(initial = null)
+
                 ChatScreen(
+                    sessionId = chat.sessionId,
+                    userId = userSession?.userId.orEmpty(),
+                    interactionViewModel = interactionViewModel,
                     onBack = {
                         backStack.removeLastOrNull()
                     }
                 )
             }
 
-            entry<AskRequest> {
+            entry<AskRequest> { ask ->
+
+                val interactionViewModel: InteractionViewModel = viewModel()
+                val userSession by sessionManager.session.collectAsState(initial = null)
+
                 AskRequestScreen(
+                    sessionId = ask.sessionId,
+                    userId = userSession?.userId.orEmpty(),
+                    interactionViewModel = interactionViewModel,
                     onBack = {
                         backStack.removeLastOrNull()
                     }
                 )
             }
 
-            entry<AskRequests> {
-                AskRequestsScreen(
-                    onBack = {
-                        backStack.removeLastOrNull()
+            entry<AskRequests> { asks ->
+
+                val interactionViewModel: InteractionViewModel = viewModel()
+                val userSession by sessionManager.session.collectAsState(initial = null)
+                val sessionViewModel: SessionViewModel = viewModel()
+                val session by sessionViewModel.session.collectAsState()
+
+                LaunchedEffect(asks.sessionId) {
+                    sessionViewModel.getSession(asks.sessionId)
+                }
+
+                session?.takeIf { it.id == asks.sessionId }?.let { currentSession ->
+
+                    val currentUserId = userSession?.userId.orEmpty()
+                    val isOwner = currentUserId.isNotBlank() &&
+                            currentUserId == currentSession.ownerId
+
+                    AskRequestsScreen(
+                        sessionId = asks.sessionId,
+                        ownerId = currentUserId,
+                        isOwner = isOwner,
+                        interactionViewModel = interactionViewModel,
+                        onBack = {
+                            backStack.removeLastOrNull()
+                        }
+                    )
+                } ?: run {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator()
                     }
-                )
+                }
             }
 
             entry<SessionSummary> { summary ->
