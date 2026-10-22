@@ -4,6 +4,7 @@ package com.example.streambridge.data.remote
 
 
 import com.example.streambridge.data.remote.interaction_api.InteractionApi
+import com.example.streambridge.data.remote.media_api.MediaApi
 import com.example.streambridge.data.remote.participant_api.ParticipantApi
 import com.example.streambridge.data.remote.session_api.SessionApi
 import com.example.streambridge.data.remote.user_api.UserApi
@@ -11,6 +12,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
+
+    private const val LAPTOP_IP = "YOUR_LAPTOP_IP"
 
     private const val AUTH_BASE_URL =
         "http://10.203.97.197:8081/"
@@ -27,43 +30,45 @@ object RetrofitClient {
     private const val INTERACTION_BASE_URL =
         "http://10.203.97.197:9094/"
 
-    val authApi: AuthApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(AUTH_BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
+    private const val MEDIA_BASE_URL =
+        "http://10.203.97.197:9095/"
+
+    private fun createRetrofit(baseUrl: String): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(
+                GsonConverterFactory.create()
+            )
             .build()
+    }
+
+    val authApi: AuthApi by lazy {
+        createRetrofit(AUTH_BASE_URL)
             .create(AuthApi::class.java)
     }
 
     val userApi: UserApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(USER_BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+        createRetrofit(USER_BASE_URL)
             .create(UserApi::class.java)
     }
 
     val sessionApi: SessionApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(SESSION_BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+        createRetrofit(SESSION_BASE_URL)
             .create(SessionApi::class.java)
     }
 
     val participantApi: ParticipantApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(PARTICIPANT_BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+        createRetrofit(PARTICIPANT_BASE_URL)
             .create(ParticipantApi::class.java)
     }
 
     val interactionApi: InteractionApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(INTERACTION_BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+        createRetrofit(INTERACTION_BASE_URL)
             .create(InteractionApi::class.java)
+    }
+
+    val mediaApi: MediaApi by lazy {
+        createRetrofit(MEDIA_BASE_URL)
+            .create(MediaApi::class.java)
     }
 }
