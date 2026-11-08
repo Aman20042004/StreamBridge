@@ -16,22 +16,22 @@ object RetrofitClient {
     private const val LAPTOP_IP = "YOUR_LAPTOP_IP"
 
     private const val AUTH_BASE_URL =
-        "http://10.203.97.197:8081/"
+        "http://10.128.147.197:8081/"
 
     private const val USER_BASE_URL =
-        "http://10.203.97.197:8090/"
+        "http://10.128.147.197:8090/"
 
     private const val SESSION_BASE_URL =
-        "http://10.203.97.197:8086/"
+        "http://10.128.147.197:8086/"
 
     private const val PARTICIPANT_BASE_URL =
-        "http://10.203.97.197:8083/"
+        "http://10.128.147.197:8083/"
 
     private const val INTERACTION_BASE_URL =
-        "http://10.203.97.197:9094/"
+        "http://10.128.147.197:9094/"
 
     private const val MEDIA_BASE_URL =
-        "http://10.203.97.197:9095/"
+        "http://10.128.147.197:9095/"
 
     private fun createRetrofit(baseUrl: String): Retrofit {
         return Retrofit.Builder()

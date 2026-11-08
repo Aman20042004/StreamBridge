@@ -1,291 +1,250 @@
 package com.example.streambridge.ui.screens.create
 
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.VideoCall
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.collectAsState
 import com.example.streambridge.data.local.SessionManager
-import com.example.streambridge.data.model.Session
-import com.example.streambridge.viewmodel.SessionViewModel
 
+// Define consistent colors for the Create Session screen
+private val Background = Color(0xFF070B18)
+private val CardColor = Color(0xFF11182A)
+private val BorderColor = Color(0xFF29344D)
+private val Purple = Color(0xFF873BFA)
+private val Blue = Color(0xFF3678FF)
+private val TextPrimary = Color(0xFFF5F6FF)
+private val TextSecondary = Color(0xFF9DA8C0)
+private val FieldBackground = Color(0xFF0D1322)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateSessionScreen(
     sessionManager: SessionManager,
     onBack: () -> Unit = {},
-    onCreate: (Session) -> Unit = {}
-)  {
-
-    val sessionViewModel: SessionViewModel = viewModel()
-
+    onNext: (String, String, String) -> Unit
+) {
     val userSession by sessionManager.session.collectAsState(initial = null)
 
-    val session by sessionViewModel.session.collectAsState()
-    val isLoading by sessionViewModel.isLoading.collectAsState()
-    val error by sessionViewModel.error.collectAsState()
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var isPublic by remember { mutableStateOf(true) }
 
-    var title by remember {
-        mutableStateOf("")
-    }
-
-    var description by remember {
-        mutableStateOf("")
-    }
-
-    var isPublic by remember {
-        mutableStateOf(true)
-    }
-    LaunchedEffect(session) {
-        session?.let {
-            onCreate(it)
-        }
-    }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF020817))
+            .background(Background)
             .padding(horizontal = 20.dp)
     ) {
-
         // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 18.dp),
+                .padding(top = 16.dp, bottom = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             IconButton(
-                onClick = onBack
+                onClick = onBack,
+                modifier = Modifier.size(36.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.White
+                    tint = TextPrimary
                 )
             }
 
+            Spacer(Modifier.width(8.dp))
+
             Text(
-                text = if (isLoading) "Creating..." else "Create Session",
-                color = Color.White,
-                fontSize = 21.sp,
+                text = "Create Session",
+                color = TextPrimary,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
         }
 
-        Spacer(
-            modifier = Modifier.height(25.dp)
-        )
-
-        // Header icon
-        androidx.compose.foundation.layout.Box(
+        // Icon Header
+        Box(
             modifier = Modifier
-                .size(58.dp)
+                .size(60.dp)
                 .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFF2563EB),
-                            Color(0xFF8B5CF6)
-                        )
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                    Brush.linearGradient(listOf(Blue, Purple)),
+                    RoundedCornerShape(16.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
-
             Icon(
-                imageVector = Icons.Default.VideoCall,
+                Icons.Default.VideoCall,
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.size(30.dp)
+                modifier = Modifier.size(32.dp)
             )
         }
 
-        Spacer(
-            modifier = Modifier.height(18.dp)
-        )
+        Spacer(Modifier.height(20.dp))
 
+        // Titles
         Text(
-            text = "Start a new session",
-            color = Color.White,
+            "Start a new session",
+            color = TextPrimary,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
 
-        Spacer(
-            modifier = Modifier.height(7.dp)
-        )
+        Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Create a space where people can connect,\nstream and interact together.",
-            color = Color(0xFF94A3B8),
-            fontSize = 13.sp,
-            lineHeight = 19.sp
+            "Create a space where people can connect,\nstream and interact together.",
+            color = TextSecondary,
+            fontSize = 14.sp,
+            lineHeight = 20.sp
         )
 
-        Spacer(
-            modifier = Modifier.height(28.dp)
-        )
+        Spacer(Modifier.height(30.dp))
 
-        // Session title
+        // Input Fields using Material 3 OutlinedTextField with custom colors
         OutlinedTextField(
             value = title,
-            onValueChange = {
-                title = it
-            },
+            onValueChange = { title = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = {
-                Text("Session Name")
-            },
-            placeholder = {
-                Text("e.g. Kotlin Study Group")
-            },
-            shape = RoundedCornerShape(14.dp)
+            label = { Text("Session Name") },
+            placeholder = { Text("e.g. Kotlin Study Group") },
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Purple,
+                unfocusedBorderColor = BorderColor,
+                focusedLabelColor = Purple,
+                unfocusedLabelColor = TextSecondary,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                focusedContainerColor = FieldBackground,
+                unfocusedContainerColor = FieldBackground
+            )
         )
 
-        Spacer(
-            modifier = Modifier.height(15.dp)
-        )
+        Spacer(Modifier.height(16.dp))
 
-        // Description
         OutlinedTextField(
             value = description,
-            onValueChange = {
-                description = it
-            },
+            onValueChange = { description = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp),
-            label = {
-                Text("Description")
-            },
-            placeholder = {
-                Text("What is this session about?")
-            },
+                .height(130.dp),
+            label = { Text("Description (Optional)") },
+            placeholder = { Text("What is this session about?") },
             maxLines = 4,
-            shape = RoundedCornerShape(14.dp)
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Purple,
+                unfocusedBorderColor = BorderColor,
+                focusedLabelColor = Purple,
+                unfocusedLabelColor = TextSecondary,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                focusedContainerColor = FieldBackground,
+                unfocusedContainerColor = FieldBackground
+            )
         )
 
-        Spacer(
-            modifier = Modifier.height(25.dp)
-        )
+        Spacer(Modifier.height(28.dp))
 
         Text(
-            text = "Session Access",
-            color = Color.White,
+            "Session Access",
+            color = TextPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
 
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
+        Spacer(Modifier.height(12.dp))
 
-        // Public
+        // Access Options
         AccessOption(
             selected = isPublic,
             icon = Icons.Default.Public,
             title = "Public",
             description = "Anyone with the session can join",
-            onClick = {
-                isPublic = true
-            }
+            onClick = { isPublic = true }
         )
 
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
+        Spacer(Modifier.height(12.dp))
 
-        // Private
         AccessOption(
             selected = !isPublic,
             icon = Icons.Default.Lock,
             title = "Private",
             description = "Only people with access can join",
-            onClick = {
-                isPublic = false
-            }
+            onClick = { isPublic = false }
         )
 
-        Spacer(
-            modifier = Modifier.weight(1f)
-        )
+        Spacer(Modifier.weight(1f))
+
+        // Next Button with gradient
+        val isEnabled = userSession?.userId != null && title.isNotBlank()
 
         Button(
-                onClick = {
-                    val ownerId = userSession?.userId
-
-                    if (ownerId != null && title.isNotBlank()) {
-                        sessionViewModel.createSession(
-                            ownerId = ownerId,
-                            title = title.trim(),
-                            description = description.trim().ifBlank { null },
-                            accessMode = if (isPublic) {
-                                "ANYONE_WITH_LINK"
-                            } else {
-                                "SELECTED_USERS_ONLY"
-                            }
-                        )
-                    }
-                },
-            enabled = !isLoading,
+            onClick = {
+                val ownerId = userSession?.userId
+                if (ownerId != null && title.isNotBlank()) {
+                    onNext(
+                        title.trim(),
+                        description.trim(),
+                        if (isPublic) "ANYONE_WITH_LINK" else "SELECTED_USERS_ONLY"
+                    )
+                }
+            },
+            enabled = isEnabled,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp),
+                .height(56.dp),
             shape = RoundedCornerShape(15.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF5B3DF5)
-            )
+                containerColor = Color.Transparent,
+                disabledContainerColor = Color(0xFF1E2638)
+            ),
+            contentPadding = PaddingValues(0.dp)
         ) {
-
-            Text(
-                text = "Create Session",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (isEnabled) {
+                            Brush.horizontalGradient(listOf(Blue, Purple, Color(0xFFB13BEF)))
+                        } else {
+                            Brush.horizontalGradient(listOf(Color(0xFF1E2638), Color(0xFF1E2638)))
+                        },
+                        RoundedCornerShape(15.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Next",
+                    color = if (isEnabled) Color.White else Color(0xFF64748B),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
+        Spacer(Modifier.height(24.dp))
     }
 }
-
 
 @Composable
 private fun AccessOption(
@@ -295,61 +254,53 @@ private fun AccessOption(
     description: String,
     onClick: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                color = if (selected) {
-                    Color(0xFF111C35)
-                } else {
-                    Color(0xFF080F20)
-                },
-                shape = RoundedCornerShape(15.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) Color(0xFF15193B) else CardColor)
+            .border(
+                1.dp,
+                if (selected) Purple.copy(alpha = 0.5f) else BorderColor,
+                RoundedCornerShape(16.dp)
             )
-            .padding(
-                horizontal = 12.dp,
-                vertical = 9.dp
-            ),
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (selected) {
-                Color(0xFF8B5CF6)
-            } else {
-                Color(0xFF64748B)
-            },
-            modifier = Modifier.size(23.dp)
+            tint = if (selected) Color(0xFFB13BEF) else TextSecondary,
+            modifier = Modifier.size(24.dp)
         )
 
-        Spacer(
-            modifier = Modifier.size(12.dp)
-        )
+        Spacer(modifier = Modifier.width(16.dp))
 
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = Color.White,
-                fontSize = 14.sp,
+                color = TextPrimary,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold
             )
 
+            Spacer(modifier = Modifier.height(2.dp))
+
             Text(
                 text = description,
-                color = Color(0xFF64748B),
-                fontSize = 11.sp
+                color = TextSecondary,
+                fontSize = 12.sp
             )
         }
 
         RadioButton(
             selected = selected,
-            onClick = onClick
+            onClick = onClick,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = Purple,
+                unselectedColor = TextSecondary
+            )
         )
     }
 }

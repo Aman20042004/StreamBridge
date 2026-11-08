@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.streambridge.viewmodel.MediaViewModel
@@ -13,9 +14,14 @@ import com.example.streambridge.viewmodel.MediaViewModelFactory
 
 @Composable
 fun MediaHealthCheckScreen() {
+
+    val context = LocalContext.current
+
     val vm: MediaViewModel = viewModel(
-        factory = MediaViewModelFactory()
+        factory = MediaViewModelFactory(context)
     )
+
+    // Baaki existing UI code unchanged
 
     val healthStatus by vm.healthStatus.collectAsState()
 

@@ -1,137 +1,212 @@
 package com.example.streambridge.data.repository
 
-
-
 import com.example.streambridge.data.model.*
+import com.example.streambridge.data.remote.RetrofitClient
 import com.example.streambridge.data.remote.media_api.MediaApi
-
 import retrofit2.Response
 
+class MediaRepository(mediaApi: MediaApi) {
 
-class MediaRepository(
-    private val api: MediaApi
-) {
-
-    private suspend fun <T : Any> safeCall(
-        call: suspend () -> Response<T>
-    ): Result<T> {
+    private fun <T> handleResponse(response: Response<T>): Result<T> {
         return try {
-            val response = call()
-
             if (response.isSuccessful) {
                 val body = response.body()
-
                 if (body != null) {
                     Result.success(body)
                 } else {
                     Result.failure(
-                        Exception("Server returned an empty response")
+                        Exception("Media Service returned an empty response")
                     )
                 }
             } else {
-                val errorMessage = response.errorBody()
-                    ?.string()
-                    ?.takeIf { it.isNotBlank() }
-                    ?: "Request failed with HTTP ${response.code()}"
-
-                Result.failure(Exception(errorMessage))
+                Result.failure(
+                    Exception(
+                        "HTTP ${response.code()} - " +
+                                (response.errorBody()?.string() ?: "Unknown error")
+                    )
+                )
             }
         } catch (e: Exception) {
-            Result.failure(
-                Exception(
-                    e.message ?: "Unable to connect to Media Service",
-                    e
-                )
-            )
+            Result.failure(e)
         }
     }
 
+    suspend fun health(): Result<Map<String, String>> =
+        try {
+            handleResponse(RetrofitClient.mediaApi.health())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
     suspend fun createMediaSession(
         request: CreateMediaSessionRequest
-    ) = safeCall {
-        api.createMediaSession(request)
-    }
+    ): Result<MediaSessionDto> =
+        try {
+            handleResponse(RetrofitClient.mediaApi.createMediaSession(request))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun getMediaSession(
         sessionId: String
-    ) = safeCall {
-        api.getMediaSession(sessionId)
-    }
+    ): Result<MediaSessionDto> =
+        try {
+            handleResponse(RetrofitClient.mediaApi.getMediaSession(sessionId))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun startMediaSession(
         sessionId: String
-    ) = safeCall {
-        api.startMediaSession(sessionId)
-    }
+    ): Result<OperationResultDto> =
+        try {
+            handleResponse(RetrofitClient.mediaApi.startMediaSession(sessionId))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun endMediaSession(
         sessionId: String
-    ) = safeCall {
-        api.endMediaSession(sessionId)
-    }
+    ): Result<OperationResultDto> =
+        try {
+            handleResponse(RetrofitClient.mediaApi.endMediaSession(sessionId))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun registerParticipant(
         sessionId: String,
         request: RegisterMediaParticipantRequest
-    ) = safeCall {
-        api.registerParticipant(sessionId, request)
-    }
+    ): Result<MediaParticipantDto> =
+        try {
+            handleResponse(
+                RetrofitClient.mediaApi.registerParticipant(sessionId, request)
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun getParticipants(
         sessionId: String
-    ) = safeCall {
-        api.getParticipants(sessionId)
-    }
+    ): Result<List<MediaParticipantDto>> =
+        try {
+            handleResponse(RetrofitClient.mediaApi.getParticipants(sessionId))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
+    suspend fun getParticipant(
+        participantId: String
+    ): Result<MediaParticipantDto> =
+        try {
+            handleResponse(RetrofitClient.mediaApi.getParticipant(participantId))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun disconnectParticipant(
         sessionId: String,
         participantId: String
-    ) = safeCall {
-        api.disconnectParticipant(sessionId, participantId)
-    }
+    ): Result<OperationResultDto> =
+        try {
+            handleResponse(
+                RetrofitClient.mediaApi.disconnectParticipant(
+                    sessionId,
+                    participantId
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun updateAudio(
         sessionId: String,
         participantId: String,
         request: AudioRequest
-    ) = safeCall {
-        api.updateAudio(sessionId, participantId, request)
-    }
+    ): Result<OperationResultDto> =
+        try {
+            handleResponse(
+                RetrofitClient.mediaApi.updateAudio(
+                    sessionId,
+                    participantId,
+                    request
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun updateVideo(
         sessionId: String,
         participantId: String,
         request: VideoRequest
-    ) = safeCall {
-        api.updateVideo(sessionId, participantId, request)
-    }
+    ): Result<OperationResultDto> =
+        try {
+            handleResponse(
+                RetrofitClient.mediaApi.updateVideo(
+                    sessionId,
+                    participantId,
+                    request
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun updateSpotlight(
         sessionId: String,
         participantId: String,
         request: SpotlightRequest
-    ) = safeCall {
-        api.updateSpotlight(sessionId, participantId, request)
-    }
+    ): Result<OperationResultDto> =
+        try {
+            handleResponse(
+                RetrofitClient.mediaApi.updateSpotlight(
+                    sessionId,
+                    participantId,
+                    request
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     suspend fun updateLayout(
         sessionId: String,
         request: LayoutRequest
-    ) = safeCall {
-        api.updateLayout(sessionId, request)
-    }
-
-    suspend fun health(): Result<Map<String, Any>> {
-        return safeCall {
-            api.health()
+    ): Result<OperationResultDto> =
+        try {
+            handleResponse(
+                RetrofitClient.mediaApi.updateLayout(sessionId, request)
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-    }
 
     suspend fun getMediaState(
         sessionId: String
-    ): Result<MediaStateResponseDto> {
-        return safeCall {
-            api.getMediaState(sessionId)
+    ): Result<MediaStateResponseDto> =
+        try {
+            handleResponse(RetrofitClient.mediaApi.getMediaState(sessionId))
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-    }
+
+    suspend fun generateLiveKitToken(
+        sessionId: String,
+        participantId: String,
+        userId: String
+    ): Result<LiveKitTokenResponse> =
+        try {
+            handleResponse(
+                RetrofitClient.mediaApi.generateLiveKitToken(
+                    sessionId,
+                    LiveKitTokenRequest(
+                        participantId = participantId,
+                        userId = userId
+                    )
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 }

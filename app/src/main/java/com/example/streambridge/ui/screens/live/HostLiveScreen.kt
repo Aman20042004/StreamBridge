@@ -1,67 +1,81 @@
 package com.example.streambridge.ui.screens.live
 
-
-
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CallEnd
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.QuestionAnswer
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material.icons.filled.VideocamOff
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.example.streambridge.viewmodel.MediaViewModel
+import androidx.compose.runtime.collectAsState
 
 @Composable
 fun HostLiveScreen(
     sessionName: String,
+    sessionId: String,
+    participantId: String,
+    userId: String,
+    mediaViewModel: MediaViewModel,
     onEndSession: () -> Unit = {},
     onChat: () -> Unit = {},
     onAskRequests: () -> Unit = {},
     onParticipants: () -> Unit = {}
 ) {
+    val context = LocalContext.current
 
-    var micEnabled by remember {
-        mutableStateOf(true)
+    var micEnabled by remember { mutableStateOf(true) }
+    var cameraEnabled by remember { mutableStateOf(true) }
+    var hasCameraPermission by remember { mutableStateOf(false) }
+
+    // State flow ViewModel se read kar rahe hain taaki re-composition ho jab track aaye
+    val localVideoTrack by mediaViewModel.localVideoTrack.collectAsState()
+
+    // Permission Launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission = isGranted
+
+        if (!isGranted) {
+            cameraEnabled = false
+        }
+    }
+    // Screen khulte hi Permission Check aur Camera Start
+    LaunchedEffect(Unit) {
+        val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+            hasCameraPermission = true
+     //       if (cameraEnabled) {
+               // mediaViewModel.initializeLocalCamera()
+          //  }
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
-    var cameraEnabled by remember {
-        mutableStateOf(true)
+    // Screen band hone par resources free karo taaki background me camera on na rahe
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaViewModel.releaseLocalCamera()
+        }
     }
 
     Box(
@@ -73,7 +87,6 @@ fun HostLiveScreen(
         /*
          * MAIN VIDEO AREA
          */
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -87,88 +100,89 @@ fun HostLiveScreen(
                 .background(Color(0xFF080F20))
         ) {
 
-            // Mock video background
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Color(0xFF172554),
-                                Color(0xFF080F20),
-                                Color(0xFF020817)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF2563EB),
-                                        Color(0xFF8B5CF6)
-                                    )
+            // ACTUAL LOCAL CAMERA PREVIEW
+            if (cameraEnabled && hasCameraPermission && localVideoTrack != null) {
+                LiveKitVideoView(
+                    videoTrack = localVideoTrack,
+                    liveKitManager = mediaViewModel.liveKitManager,
+                    modifier = Modifier.fillMaxSize(),
+                    mirror = true
+                )
+            } else {
+                // Agar camera band hai toh wahi purana mock background dikhayenge
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF172554),
+                                    Color(0xFF080F20),
+                                    Color(0xFF020817)
                                 )
-                            ),
-                        contentAlignment = Alignment.Center
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFF2563EB),
+                                            Color(0xFF8B5CF6)
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "H",
+                                color = Color.White,
+                                fontSize = 36.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         Text(
-                            text = "A",
+                            text = "You",
                             color = Color.White,
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = if (!hasCameraPermission) "Permission denied" else "Camera off",
+                            color = Color(0xFF64748B),
+                            fontSize = 12.sp
                         )
                     }
-
-                    Spacer(
-                        modifier = Modifier.height(14.dp)
-                    )
-
-                    Text(
-                        text = "You",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(4.dp)
-                    )
-
-                    Text(
-                        text = "Camera preview",
-                        color = Color(0xFF64748B),
-                        fontSize = 12.sp
-                    )
                 }
             }
+
 
             /*
              * TOP SESSION INFO
              */
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Surface(
                     shape = RoundedCornerShape(10.dp),
                     color = Color.Black.copy(alpha = 0.55f)
                 ) {
-
                     Row(
                         modifier = Modifier.padding(
                             horizontal = 11.dp,
@@ -176,18 +190,13 @@ fun HostLiveScreen(
                         ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFFEF4444))
                         )
-
-                        Spacer(
-                            modifier = Modifier.width(7.dp)
-                        )
-
+                        Spacer(modifier = Modifier.width(7.dp))
                         Text(
                             text = "LIVE",
                             color = Color.White,
@@ -197,16 +206,13 @@ fun HostLiveScreen(
                     }
                 }
 
-                Spacer(
-                    modifier = Modifier.width(9.dp)
-                )
+                Spacer(modifier = Modifier.width(9.dp))
 
                 Surface(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
                     color = Color.Black.copy(alpha = 0.55f)
                 ) {
-
                     Text(
                         text = sessionName,
                         color = Color.White,
@@ -219,14 +225,9 @@ fun HostLiveScreen(
                     )
                 }
 
-                Spacer(
-                    modifier = Modifier.width(8.dp)
-                )
+                Spacer(modifier = Modifier.width(8.dp))
 
-                IconButton(
-                    onClick = { }
-                ) {
-
+                IconButton(onClick = { }) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "More",
@@ -236,37 +237,24 @@ fun HostLiveScreen(
             }
 
             /*
-             * PARTICIPANT PREVIEW
+             * PARTICIPANT PREVIEW (Mock - preserved)
              */
-
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
-                ParticipantPreview(
-                    initials = "R",
-                    name = "Rahul"
-                )
-
-                ParticipantPreview(
-                    initials = "A",
-                    name = "Ananya"
-                )
-
-                ParticipantPreview(
-                    initials = "+8",
-                    name = "More"
-                )
+                // Tumhara purana ParticipantPreview code yaha aayega (wo class mere paas nahi hai isliye method comment kar raha hoon taaki error na de, usko un-comment karlena)
+                // ParticipantPreview(initials = "R", name = "Rahul")
+                // ParticipantPreview(initials = "A", name = "Ananya")
+                // ParticipantPreview(initials = "+8", name = "More")
             }
         }
 
         /*
          * BOTTOM CONTROL PANEL
          */
-
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -274,83 +262,66 @@ fun HostLiveScreen(
                 .navigationBarsPadding(),
             color = Color(0xFF080F20)
         ) {
-
             Column(
                 modifier = Modifier.padding(
                     horizontal = 16.dp,
                     vertical = 12.dp
                 )
             ) {
-
-                /*
-                 * QUICK ACTIONS
-                 */
-
+                /* QUICK ACTIONS */
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // MICROPHONE CONTROL
+                    // ... ControlButton class tumhari local hogi, bas method call aise jayega
+                    IconButton(onClick = {
+                        micEnabled = !micEnabled
+                        mediaViewModel.setLiveKitMicrophone(micEnabled)
+                    }) {
+                        Icon(
+                            imageVector = if (micEnabled) Icons.Default.Mic else Icons.Default.MicOff,
+                            contentDescription = "Mic Toggle",
+                            tint = Color.White
+                        )
+                    }
 
-                    ControlButton(
-                        icon = if (micEnabled) {
-                            Icons.Default.Mic
-                        } else {
-                            Icons.Default.MicOff
-                        },
-                        label = if (micEnabled) {
-                            "Mute"
-                        } else {
-                            "Unmute"
-                        },
-                        onClick = {
-                            micEnabled = !micEnabled
-                        }
-                    )
-
-                    ControlButton(
-                        icon = if (cameraEnabled) {
-                            Icons.Default.Videocam
-                        } else {
-                            Icons.Default.VideocamOff
-                        },
-                        label = if (cameraEnabled) {
-                            "Camera"
-                        } else {
-                            "Camera Off"
-                        },
-                        onClick = {
+                    // CAMERA CONTROL
+                    IconButton(onClick = {
+                        if (hasCameraPermission) {
                             cameraEnabled = !cameraEnabled
+                            mediaViewModel.setLiveKitCamera(cameraEnabled)
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                         }
-                    )
+                    }) {
+                        Icon(
+                            imageVector = if (cameraEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                            contentDescription = "Camera Toggle",
+                            tint = Color.White
+                        )
+                    }
 
-                    ControlButton(
-                        icon = Icons.Default.Groups,
-                        label = "People",
-                        onClick = onParticipants
-                    )
+                    // PARTICIPANTS
+                    IconButton(onClick = onParticipants) {
+                        Icon(Icons.Default.Groups, contentDescription = "People", tint = Color.White)
+                    }
 
-                    ControlButton(
-                        icon = Icons.Default.Chat,
-                        label = "Chat",
-                        onClick = onChat
-                    )
+                    // CHAT
+                    IconButton(onClick = onChat) {
+                        Icon(Icons.Default.Chat, contentDescription = "Chat", tint = Color.White)
+                    }
 
-                    ControlButton(
-                        icon = Icons.Default.QuestionAnswer,
-                        label = "Ask",
-                        onClick = onAskRequests
-                    )
+                    // ASK
+                    IconButton(onClick = onAskRequests) {
+                        Icon(Icons.Default.QuestionAnswer, contentDescription = "Ask", tint = Color.White)
+                    }
                 }
 
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
 
-                /*
-                 * END SESSION
-                 */
-
+                /* END SESSION */
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -359,22 +330,16 @@ fun HostLiveScreen(
                     shape = RoundedCornerShape(14.dp),
                     color = Color(0xFF3B1118)
                 ) {
-
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         Icon(
                             imageVector = Icons.Default.CallEnd,
                             contentDescription = null,
                             tint = Color(0xFFF87171)
                         )
-
-                        Spacer(
-                            modifier = Modifier.width(8.dp)
-                        )
-
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "End Session",
                             color = Color(0xFFF87171),

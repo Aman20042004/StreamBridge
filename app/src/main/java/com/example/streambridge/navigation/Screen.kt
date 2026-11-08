@@ -17,6 +17,13 @@ data object Login : NavKey
 @Serializable
 data object SignUp : NavKey
 
+@Serializable
+data class PreJoin(
+    val ownerId: String,
+    val title: String,
+    val description: String,
+    val accessMode: String
+) : NavKey
 
 // =====================================================
 // 2. HOME & PROFILE

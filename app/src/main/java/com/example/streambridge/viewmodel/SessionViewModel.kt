@@ -30,6 +30,12 @@ class SessionViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    fun resetSessionState() {
+        _session.value = null
+        _error.value = null
+        _isLoading.value = false
+    }
+
     fun createSession(
         ownerId: String,
         title: String,
