@@ -115,12 +115,11 @@ Runtime| JDK 21
 Database| MongoDB Atlas
 Backend Architecture| Microservices
 Android Development| Kotlin, Jetpack Compose
-API Testing| Postman
 Version Control| Git & GitHub
 Containerization| Docker
 Media Architecture| WebRTC / Specialized Media Infrastructure
 Broadcasting| YouTube Live / RTMP-oriented architecture
-
+LiveKit
 ---
 
 📂 Repository Structure
